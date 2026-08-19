@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BorePitch — HDD pitch calculator</title>
+  <meta name="description" content="Free directional drilling calculator. Enter current depth, target depth, and remaining distance. Get the percent and degrees of pitch to hold." />
+  <meta name="theme-color" content="#13150f" />
+  <meta property="og:title" content="BorePitch — hold the pitch, hit the depth" />
+  <meta property="og:description" content="Free HDD field calculator. Punch the numbers. Get the pitch." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2313150f'/%3E%3Cpath d='M6 24 L26 10' stroke='%23e8a317' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --canvas: #13150f;
+      --panel: #1c2015;
+      --raised: #252a1b;
+      --ink: #f3edd8;
+      --haze: #9d977f;
+      --amber: #e8a317;
+      --amber-ink: #1c1403;
+      --line: #353a28;
+      --rust: #d85a3a;
+      --moss: #8fb33a;
+      --shadow: 0 0 0 1px rgb(255 255 255 / 0.07);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    button { font-family: inherit; cursor: pointer; border: 0; }
+    input { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    a { color: inherit; }
+    .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+    @media (min-width: 640px) { .wrap { padding: 0 1.5rem; } }
+
+    header.site {
+      position: sticky; top: 0; z-index: 40;
+      border-bottom: 1px solid rgb(53 58 40 / 0.8);
+      background: rgb(19 21 15 / 0.85);
+      backdrop-filter: blur(12px);
+    }
+    header.site .row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.75rem; padding: 0.75rem 0;
+    }
+    header.site .brand-kicker {
+      margin: 0; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--amber);
+    }
+    header.site .brand { margin: 0; font-size: 1.125rem; font-weight: 600; }
+    header.site nav { display: flex; align-items: center; gap: 0.25rem; }
+    header.site nav a {
+      min-height: 2.75rem; display: inline-flex; align-items: center;
+      padding: 0 0.75rem; font-size: 0.875rem; color: var(--haze); text-decoration: none;
+    }
+    header.site nav a:hover { color: var(--ink); }
+    @media (max-width: 640px) { .hide-sm { display: none !important; } }
+
+    .hero {
+      position: relative; isolation: isolate; min-height: 88dvh;
+      display: flex; align-items: flex-end; overflow: hidden;
+    }
+    .hero img.bg {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; z-index: -2;
+    }
+    .hero .veil {
+      position: absolute; inset: 0; z-index: -1;
+      background: linear-gradient(to top, var(--canvas), rgb(19 21 15 / 0.55), rgb(19 21 15 / 0.2));
+    }
+    .hero-inner { padding: 6rem 0 3.5rem; }
+    .kicker {
+      margin: 0; font-size: 0.75rem; letter-spacing: 0.22em;
+      text-transform: uppercase; color: var(--amber);
+    }
+    h1 {
+      margin: 0.75rem 0 0; max-width: 48rem;
+      font-size: clamp(2rem, 6vw, 3.75rem);
+      font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; line-height: 1.1;
+    }
+    .lede { margin: 1rem 0 0; max-width: 36rem; font-size: 1.05rem; color: rgb(243 237 216 / 0.88); }
+    .actions { margin-top: 2rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 3rem; padding: 0 1.25rem; border-radius: 0.625rem;
+      font-size: 0.875rem; font-weight: 600; text-decoration: none;
+    }
+    .btn-amber { background: var(--amber); color: var(--amber-ink); }
+    .btn-ghost { background: rgb(37 42 27 / 0.8); color: var(--ink); box-shadow: var(--shadow); }
+    .btn-raised { background: var(--raised); color: var(--ink); }
+
+    .section { padding: 4rem 0; }
+    h2 { margin: 0.5rem 0 0; font-size: clamp(1.75rem, 4vw, 2.25rem); font-weight: 600; letter-spacing: -0.02em; }
+    .sub { margin: 0.75rem 0 0; max-width: 36rem; color: var(--haze); }
+
+    .cards { margin-top: 2.5rem; display: grid; gap: 1.25rem; }
+    @media (min-width: 768px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+    .card { overflow: hidden; border-radius: 1.35rem; background: var(--panel); box-shadow: var(--shadow); }
+    .card img { height: 13rem; width: 100%; object-fit: cover; }
+    .card .pad { padding: 1rem; }
+    .card h3 { margin: 0; font-size: 1.125rem; }
+    .card p { margin: 0.4rem 0 0; font-size: 0.9rem; color: var(--haze); }
+
+    .split {
+      position: relative; isolation: isolate;
+      border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    }
+    .split img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.3; z-index: -2; }
+    .split .veil { position: absolute; inset: 0; background: rgb(19 21 15 / 0.7); z-index: -1; }
+    .split-grid { display: grid; gap: 2rem; padding: 3.5rem 0; align-items: center; }
+    @media (min-width: 768px) { .split-grid { grid-template-columns: 1fr 1fr; } }
+    .split-photo { height: 16rem; width: 100%; border-radius: 1.35rem; object-fit: cover; box-shadow: var(--shadow); }
+    @media (min-width: 640px) { .split-photo { height: 20rem; } }
+
+    #calc { scroll-margin-top: 5rem; padding: 2rem 0 3rem; }
+    .calc-head { max-width: 48rem; margin: 0 auto; padding: 2rem 1rem 0; }
+    @media (min-width: 640px) { .calc-head { padding: 2rem 1.5rem 0; } }
+
+    .calc { max-width: 48rem; margin: 0 auto; padding: 1.25rem 1rem 0; display: grid; gap: 1.25rem; }
+    @media (min-width: 640px) { .calc { padding: 1.25rem 1.5rem 0; } }
+    .panel { background: var(--panel); border-radius: 1.35rem; padding: 1.25rem; box-shadow: var(--shadow); }
+    .label { margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 500; }
+    .eyebrow { margin: 0; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--haze); }
+    .pitch-row { margin-top: 0.5rem; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.5rem 2rem; }
+    .big { margin: 0; font-size: clamp(2.75rem, 8vw, 3.75rem); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+    .med { margin: 0; font-size: clamp(1.75rem, 5vw, 2.25rem); font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums; }
+    .tone-amber { color: var(--amber); }
+    .tone-rust { color: var(--rust); }
+    .tone-moss { color: var(--moss); }
+    .caption { margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--haze); }
+    .verb { margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
+
+    .grid2 { display: grid; gap: 0.75rem; }
+    @media (min-width: 640px) { .grid2 { grid-template-columns: 1fr 1fr; } }
+
+    .stepper { display: flex; align-items: center; gap: 0.4rem; }
+    .stepper button, .icon-btn {
+      width: 2.75rem; height: 2.75rem; flex-shrink: 0;
+      display: grid; place-items: center; border-radius: 0.625rem;
+      background: var(--raised); color: var(--ink); font-size: 1.25rem;
+    }
+    .stepper input, .num {
+      height: 2.75rem; min-width: 0; flex: 1;
+      border: 0; border-radius: 0.625rem; background: var(--raised);
+      color: var(--ink); text-align: center; font-size: 1.25rem;
+      font-variant-numeric: tabular-nums; outline: none;
+    }
+    .num { height: 3rem; text-align: left; padding: 0 0.75rem; }
+    .stepper input:focus, .num:focus { box-shadow: 0 0 0 2px rgb(232 163 23 / 0.6); }
+    .unit { font-size: 0.75rem; color: var(--haze); text-align: center; margin: 0.25rem 0 0; }
+
+    .unit-toggle { display: flex; border-radius: 0.625rem; background: var(--raised); padding: 0.25rem; }
+    .unit-toggle button {
+      min-height: 2.25rem; min-width: 3rem; border-radius: 0.375rem;
+      padding: 0 0.75rem; background: transparent; color: var(--haze); font-weight: 500; font-size: 0.875rem;
+    }
+    .unit-toggle button.on { background: var(--amber); color: var(--amber-ink); }
+
+    .stat .v { margin: 0.25rem 0 0; font-size: 1.5rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .stat .h { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--haze); }
+    .warn { margin: 0; border-radius: 0.75rem; background: var(--raised); padding: 0.75rem 1rem; color: var(--amber); font-size: 0.875rem; }
+    .btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+    .howto li { margin: 0.4rem 0; }
+    .howto .plus { color: var(--amber); }
+    .howto .minus { color: var(--rust); }
+
+    .profile { overflow: hidden; border-radius: 0.75rem; background: var(--raised); }
+    .profile svg { width: 100%; height: auto; display: block; }
+    .empty-plot { height: 12rem; display: grid; place-items: center; color: var(--haze); font-size: 0.875rem; }
+
+    footer.site { border-top: 1px solid var(--line); }
+    footer.site .row {
+      display: flex; flex-direction: column; gap: 0.5rem;
+      padding: 2rem 0; font-size: 0.875rem; color: var(--haze);
+    }
+    @media (min-width: 640px) {
+      footer.site .row { flex-direction: row; align-items: center; justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap row">
+      <a href="#" style="text-decoration:none">
+        <p class="brand-kicker mono">Free HDD tool</p>
+        <p class="brand">BorePitch</p>
+      </a>
+      <nav>
+        <a href="#calc">Calculator</a>
+        <a class="hide-sm" href="#how">How it works</a>
+        <a href="https://truckernflorida-arch.github.io/stealthbore/">Stealthbore</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <img class="bg" src="photos/hero-dawn.jpg" alt="HDD drill rig at first light on a Florida county road" />
+    <div class="veil"></div>
+    <div class="wrap hero-inner">
+      <p class="kicker mono">For any crew, any locator</p>
+      <h1>Punch the numbers. Hold the pitch. Hit the depth.</h1>
+      <p class="lede">BorePitch is a free field calculator for horizontal directional drilling. Enter where you are, where you need to be, and how far is left. It gives you the percent — and the degrees — to hold.</p>
+      <div class="actions">
+        <a class="btn btn-amber" href="#calc">Open the calculator</a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" class="section wrap">
+    <p class="kicker mono">On the job</p>
+    <h2>Built for the seat, not the office.</h2>
+    <p class="sub">Same convention as Vermeer and DigiTrak planning: plus pitch climbs, minus pitch dives. Big numbers. Gloves-friendly steppers. Works in a phone in the cab.</p>
+    <div class="cards">
+      <article class="card">
+        <img src="photos/locator.jpg" alt="Locator walking a Florida easement with a walkover receiver" />
+        <div class="pad">
+          <h3>Walk it</h3>
+          <p>Locator calls the depth. You type it in feet and inches — the way the crew actually talks.</p>
+        </div>
+      </article>
+      <article class="card">
+        <img src="photos/cab.jpg" alt="Operator hands on directional drill joysticks" />
+        <div class="pad">
+          <h3>Hold it</h3>
+          <p>The app gives you the pitch to hold for the remaining distance. Percent and degrees, live.</p>
+        </div>
+      </article>
+      <article class="card">
+        <img src="photos/rods.jpg" alt="Crew making up a drill rod on a sunny jobsite" />
+        <div class="pad">
+          <h3>Hit it</h3>
+          <p>Optional rod length and current pitch show how much to steer per stick so you do not over-bend pipe.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="split">
+    <img class="bg" src="photos/dusk.jpg" alt="HDD rig and mud tank at Florida dusk" />
+    <div class="veil"></div>
+    <div class="wrap split-grid">
+      <div>
+        <p class="kicker mono">Free to use</p>
+        <h2>Anyone can run a shot.</h2>
+        <p class="sub">No paywall on the math. Last numbers stay on this phone so the next rod is one tap away.</p>
+      </div>
+      <img class="split-photo" src="photos/bit.jpg" alt="Muddy drill head and transmitter housing on plywood" />
+    </div>
+  </section>
+
+  <section id="calc">
+    <div class="calc-head">
+      <p class="kicker mono">Field calculator</p>
+      <h2>Run your numbers</h2>
+      <p class="sub">Sample shot is loaded so you can see the math. Clear it and punch yours.</p>
+    </div>
+
+    <div class="calc">
+      <section class="panel">
+        <p class="eyebrow mono">Hold this pitch</p>
+        <div id="result-hero"></div>
+      </section>
+
+      <div id="profile" class="profile"></div>
+
+      <div class="grid2">
+        <div class="panel">
+          <p class="label">Where you are now</p>
+          <div class="grid2">
+            <div>
+              <div class="stepper">
+                <button type="button" data-step="currentFt" data-delta="-1" aria-label="Decrease current feet">−</button>
+                <input id="currentFt" inputmode="decimal" aria-label="Current depth feet" />
+                <button type="button" data-step="currentFt" data-delta="1" aria-label="Increase current feet">+</button>
+              </div>
+              <p class="unit">ft</p>
+            </div>
+            <div>
+              <div class="stepper">
+                <button type="button" data-step="currentIn" data-delta="-1" data-max="11" aria-label="Decrease current inches">−</button>
+                <input id="currentIn" inputmode="decimal" aria-label="Current depth inches" />
+                <button type="button" data-step="currentIn" data-delta="1" data-max="11" aria-label="Increase current inches">+</button>
+              </div>
+              <p class="unit">in</p>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <p class="label">Target depth</p>
+          <div class="grid2">
+            <div>
+              <div class="stepper">
+                <button type="button" data-step="targetFt" data-delta="-1" aria-label="Decrease target feet">−</button>
+                <input id="targetFt" inputmode="decimal" aria-label="Target depth feet" />
+                <button type="button" data-step="targetFt" data-delta="1" aria-label="Increase target feet">+</button>
+              </div>
+              <p class="unit">ft</p>
+            </div>
+            <div>
+              <div class="stepper">
+                <button type="button" data-step="targetIn" data-delta="-1" data-max="11" aria-label="Decrease target inches">−</button>
+                <input id="targetIn" inputmode="decimal" aria-label="Target depth inches" />
+                <button type="button" data-step="targetIn" data-delta="1" data-max="11" aria-label="Increase target inches">+</button>
+              </div>
+              <p class="unit">in</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <div class="panel">
+          <p class="label">Remaining distance</p>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <input class="num" id="distance" inputmode="decimal" aria-label="Remaining distance in feet" />
+            <span class="unit" style="margin:0">ft</span>
+          </div>
+        </div>
+        <div class="panel">
+          <p class="label">Rod length (optional)</p>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <input class="num" id="rodLength" inputmode="decimal" aria-label="Rod length in feet" />
+            <span class="unit" style="margin:0">ft</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="panel">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.5rem">
+          <p class="label" style="margin:0">Current pitch (optional)</p>
+          <div class="unit-toggle">
+            <button type="button" id="unitPct">%</button>
+            <button type="button" id="unitDeg">Deg</button>
+          </div>
+        </div>
+        <div style="margin-top:.75rem;display:flex;align-items:center;gap:.5rem">
+          <input class="num" id="currentPitch" inputmode="decimal" aria-label="Current pitch" placeholder="0" />
+          <span class="unit" id="pitchUnitLabel" style="margin:0">°</span>
+        </div>
+        <p class="caption">Leave blank if you only need the target pitch. Fill it in to see how much to steer from where the head is now.</p>
+      </section>
+
+      <div id="extras" class="grid2"></div>
+      <p id="warning" class="warn" hidden></p>
+
+      <div class="btns">
+        <button type="button" class="btn btn-amber" id="sample">Load sample shot</button>
+        <button type="button" class="btn btn-raised" id="clear">Clear</button>
+      </div>
+
+      <aside class="panel howto">
+        <p class="label" style="margin-bottom:.5rem">How to read it</p>
+        <ul>
+          <li><span class="plus">+ pitch</span> = climb, getting shallower (Vermeer / DigiTrak convention).</li>
+          <li><span class="minus">− pitch</span> = dive, getting deeper.</li>
+          <li>Percent is the field number: 1% over 100 ft is 1 ft of rise or fall. Degrees are the same slope as an angle.</li>
+          <li>Formula: (current depth − target depth) ÷ remaining distance × 100. This is the straight-shot hold. Soil and rod bend will still move the head.</li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <footer class="site">
+    <div class="wrap row">
+      <p>BorePitch — free HDD pitch calculator. Planning aid, not a substitute for locate + judgment.</p>
+      <p class="mono" style="font-size:.75rem;letter-spacing:.08em;text-transform:uppercase">Hold the line</p>
+    </div>
+  </footer>
+
+  <script>
+    const STORAGE_KEY = "borepitch:v1";
+    const EXAMPLE = {
+      currentFt: "12", currentIn: "4",
+      targetFt: "2", targetIn: "6",
+      distance: "86", rodLength: "10",
+      currentPitch: "7", currentPitchUnit: "degrees",
+    };
+
+    const fields = ["currentFt","currentIn","targetFt","targetIn","distance","rodLength","currentPitch"];
+    const els = Object.fromEntries(fields.map((id) => [id, document.getElementById(id)]));
+    let unit = "degrees";
+
+    function n(raw) { const v = Number(raw); return Number.isFinite(v) ? v : 0; }
+    function parseOptional(raw) {
+      const t = String(raw ?? "").trim();
+      if (!t || t === "+" || t === "-" || t === "−") return null;
+      const v = Number(t.replace("−", "-"));
+      return Number.isFinite(v) ? v : null;
+    }
+    function feetInchesToFeet(ft, inch) { return ft + inch / 12; }
+    function feetToParts(total) {
+      const sign = total < 0 ? -1 : 1;
+      const abs = Math.abs(total);
+      let feet = Math.floor(abs + 1e-9);
+      let inches = Math.round((abs - feet) * 12);
+      if (inches === 12) { feet += 1; inches = 0; }
+      return { feet: sign * feet, inches };
+    }
+    function formatDepth(total) {
+      const { feet, inches } = feetToParts(total);
+      const sign = feet < 0 ? "−" : "";
+      return `${sign}${Math.abs(feet)}′ ${inches}″`;
+    }
+    function formatSigned(value, digits, suffix) {
+      if (!Number.isFinite(value)) return "—";
+      const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+      return `${sign}${Math.abs(value).toFixed(digits)}${suffix}`;
+    }
+    function degToPct(deg) { return Math.tan((deg * Math.PI) / 180) * 100; }
+    function pctToDeg(pct) { return (Math.atan(pct / 100) * 180) / Math.PI; }
+
+    function compute() {
+      const currentDepth = feetInchesToFeet(n(els.currentFt.value), n(els.currentIn.value));
+      const targetDepth = feetInchesToFeet(n(els.targetFt.value), n(els.targetIn.value));
+      const distance = Number(els.distance.value);
+      if (!Number.isFinite(distance) || distance <= 0) return null;
+      if (!Number.isFinite(currentDepth) || !Number.isFinite(targetDepth)) return null;
+      const rise = currentDepth - targetDepth;
+      const pitchPercent = (rise / distance) * 100;
+      const pitchDegrees = (Math.atan(rise / distance) * 180) / Math.PI;
+      const rodLength = parseOptional(els.rodLength.value);
+      const rods = rodLength && rodLength > 0 ? distance / rodLength : null;
+      const perRodChange = rodLength && rodLength > 0 ? -(pitchPercent / 100) * rodLength : null;
+      const rawPitch = parseOptional(els.currentPitch.value);
+      let currentPitchPercent = null, currentPitchDegrees = null;
+      if (rawPitch !== null) {
+        if (unit === "degrees") {
+          currentPitchDegrees = rawPitch;
+          currentPitchPercent = degToPct(rawPitch);
+        } else {
+          currentPitchPercent = rawPitch;
+          currentPitchDegrees = pctToDeg(rawPitch);
+        }
+      }
+      const pitchDeltaPercent = currentPitchPercent === null ? null : pitchPercent - currentPitchPercent;
+      const pitchDeltaDegrees = currentPitchDegrees === null ? null : pitchDegrees - currentPitchDegrees;
+      let warning = null;
+      if (Math.abs(pitchPercent) > 100) warning = "Required slope is steeper than 100%. Distance is too short for that depth change on a straight shot.";
+      else if (Math.abs(pitchPercent) > 45) warning = "Steeper than 45%. Most walkover locators lose reliable pitch past this. Plan more setback or a curve.";
+      else if (pitchDeltaPercent !== null && rodLength && Math.abs(pitchDeltaPercent) > 10 && rods !== null && rods < 2) {
+        warning = "Pitch change is more than ~10% in under two rods. That can over-bend pipe. Spread the steer.";
+      }
+      return { currentDepth, targetDepth, distance, rise, pitchPercent, pitchDegrees, perRodChange, rods, pitchDeltaPercent, pitchDeltaDegrees, warning };
+    }
+
+    function drawProfile(r) {
+      const box = document.getElementById("profile");
+      if (!r) {
+        box.innerHTML = `<div class="empty-plot">Enter a remaining distance to draw the shot.</div>`;
+        return;
+      }
+      const w = 640, h = 220, padL = 52, padR = 24, padT = 28, padB = 36;
+      const plotW = w - padL - padR, plotH = h - padT - padB;
+      const maxDepth = Math.max(r.currentDepth, r.targetDepth, 1) * 1.25;
+      const x1 = padL, x2 = padL + plotW;
+      const yOf = (d) => padT + (d / maxDepth) * plotH;
+      const y1 = yOf(r.currentDepth), y2 = yOf(r.targetDepth);
+      const climbing = r.rise > 0.02, diving = r.rise < -0.02;
+      const stroke = climbing ? "#e8a317" : diving ? "#d85a3a" : "#8fb33a";
+      const y2text = Math.abs(y2 - y1) < 14 ? y2 + (y2 >= y1 ? 16 : -10) : y2 + 4;
+      box.innerHTML = `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Bore profile from current depth to target">
+        <line x1="${padL}" x2="${w - padR}" y1="${padT}" y2="${padT}" stroke="#353a28" stroke-dasharray="4 5" stroke-width="1"/>
+        <text x="${padL}" y="18" fill="#9d977f" font-size="11" font-family="IBM Plex Mono, monospace">SURFACE</text>
+        <text x="${w - padR}" y="18" text-anchor="end" fill="#9d977f" font-size="11" font-family="IBM Plex Mono, monospace">${r.distance.toFixed(0)} FT AHEAD</text>
+        <line x1="${padL}" x2="${padL}" y1="${padT}" y2="${h - padB}" stroke="#353a28" stroke-width="1"/>
+        <text x="${padL - 8}" y="${y1 + 4}" text-anchor="end" fill="#9d977f" font-size="10" font-family="IBM Plex Mono, monospace">${formatDepth(r.currentDepth)}</text>
+        <text x="${padL - 8}" y="${y2text}" text-anchor="end" fill="#9d977f" font-size="10" font-family="IBM Plex Mono, monospace">${formatDepth(r.targetDepth)}</text>
+        <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="${x1}" cy="${y1}" r="6" fill="#f3edd8"/>
+        <circle cx="${x1}" cy="${y1}" r="3" fill="#13150f"/>
+        <rect x="${x2 - 6}" y="${y2 - 6}" width="12" height="12" fill="${stroke}" transform="rotate(45 ${x2} ${y2})"/>
+        <text x="${x1}" y="${h - 12}" fill="#9d977f" font-size="11" font-family="IBM Plex Sans, sans-serif">Now</text>
+        <text x="${x2}" y="${h - 12}" text-anchor="end" fill="#9d977f" font-size="11" font-family="IBM Plex Sans, sans-serif">Target</text>
+      </svg>`;
+    }
+
+    function render() {
+      const r = compute();
+      const hero = document.getElementById("result-hero");
+      const extras = document.getElementById("extras");
+      const warn = document.getElementById("warning");
+      document.getElementById("unitPct").className = unit === "percent" ? "on" : "";
+      document.getElementById("unitDeg").className = unit === "degrees" ? "on" : "";
+      document.getElementById("pitchUnitLabel").textContent = unit === "percent" ? "%" : "°";
+
+      if (!r) {
+        hero.innerHTML = `<p class="caption" style="font-size:1.125rem">Enter remaining distance to calculate.</p>`;
+        extras.innerHTML = "";
+        warn.hidden = true;
+        drawProfile(null);
+        return;
+      }
+      const climbing = r.rise > 0.02, diving = r.rise < -0.02;
+      const tone = climbing ? "tone-amber" : diving ? "tone-rust" : "tone-moss";
+      const verb = climbing ? "Climb" : diving ? "Dive" : "Hold depth";
+      const arrow = climbing ? "↑" : diving ? "↓" : "";
+      const note = climbing
+        ? " — positive pitch, coming shallower"
+        : diving ? " — negative pitch, going deeper" : " — stay level";
+      hero.innerHTML = `
+        <div class="pitch-row">
+          <div>
+            <p class="big mono ${tone}">${formatSigned(r.pitchPercent, 2, "%")}</p>
+            <p class="caption">Field percent</p>
+          </div>
+          <div>
+            <p class="med mono ${tone}">${formatSigned(r.pitchDegrees, 2, "°")}</p>
+            <p class="caption">Degrees</p>
+          </div>
+        </div>
+        <div class="verb"><span>${arrow}</span><span>${verb} ${formatDepth(Math.abs(r.rise))} over ${r.distance.toFixed(1)} ft${note}</span></div>`;
+
+      let extra = "";
+      if (r.perRodChange !== null && r.rods !== null) {
+        extra += `<div class="panel stat"><p class="caption">Depth change / rod</p><p class="v mono">${formatSigned(r.perRodChange, 2, " ft")}</p><p class="h">${r.rods.toFixed(1)} rods at ${els.rodLength.value} ft. Negative = shallower. Positive = deeper.</p></div>`;
+      }
+      if (r.pitchDeltaPercent !== null && r.pitchDeltaDegrees !== null) {
+        const shown = unit === "degrees"
+          ? formatSigned(r.pitchDeltaDegrees, 2, "°")
+          : formatSigned(r.pitchDeltaPercent, 2, "%");
+        let hint = "Already on the shot. Hold what you have.";
+        if (Math.abs(r.pitchDeltaPercent) >= 0.35) {
+          hint = r.pitchDeltaPercent > 0
+            ? `Come up more — add about ${formatSigned(r.pitchDeltaPercent, 1, "%")} / ${formatSigned(r.pitchDeltaDegrees, 1, "°")}.`
+            : `Drop the nose — ${formatSigned(r.pitchDeltaPercent, 1, "%")} / ${formatSigned(r.pitchDeltaDegrees, 1, "°")}.`;
+        }
+        extra += `<div class="panel stat"><p class="caption">Steer from current</p><p class="v mono">${shown}</p><p class="h">${hint}</p></div>`;
+      }
+      extras.innerHTML = extra;
+      if (r.warning) { warn.hidden = false; warn.textContent = r.warning; }
+      else { warn.hidden = true; }
+      drawProfile(r);
+    }
+
+    function save() {
+      const data = Object.fromEntries(fields.map((id) => [id, els[id].value]));
+      data.currentPitchUnit = unit;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+    function loadForm(data) {
+      fields.forEach((id) => { els[id].value = data[id] ?? ""; });
+      unit = data.currentPitchUnit === "percent" ? "percent" : "degrees";
+      render();
+    }
+    function hydrate() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          loadForm({ ...EXAMPLE, ...JSON.parse(raw) });
+          return;
+        }
+      } catch {}
+      loadForm(EXAMPLE);
+    }
+
+    fields.forEach((id) => {
+      els[id].addEventListener("input", () => { save(); render(); });
+      els[id].addEventListener("focus", (e) => e.target.select());
+    });
+    document.querySelectorAll("[data-step]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-step");
+        const delta = Number(btn.getAttribute("data-delta"));
+        const max = btn.hasAttribute("data-max") ? Number(btn.getAttribute("data-max")) : Infinity;
+        let next = n(els[key].value) + delta;
+        if (next < 0) next = 0;
+        if (next > max) next = max;
+        els[key].value = String(next);
+        save(); render();
+      });
+    });
+    document.getElementById("unitPct").addEventListener("click", () => { unit = "percent"; save(); render(); });
+    document.getElementById("unitDeg").addEventListener("click", () => { unit = "degrees"; save(); render(); });
+    document.getElementById("sample").addEventListener("click", () => { loadForm(EXAMPLE); save(); });
+    document.getElementById("clear").addEventListener("click", () => {
+      loadForm({
+        currentFt: "", currentIn: "", targetFt: "", targetIn: "",
+        distance: "", rodLength: "10", currentPitch: "", currentPitchUnit: unit,
+      });
+      save();
+    });
+
+    hydrate();
+  </script>
+</body>
+</html>
