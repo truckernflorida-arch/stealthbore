@@ -1,7 +1,10 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
-<meta name="theme-color" content="#0c0d0e"/><title>SteerHead — Stealthbore</title>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="theme-color" content="#0c0d0e"/>
+<title>SteerHead — Stealthbore HDD</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"/>
 <style>
 :root{--bg:#0c0d0e;--sf:#161718;--sf2:#1e1f21;--fg:#ecece8;--mu:#8b8d86;--bd:#2c2d2f;--ac:#14b8a6;--ok:#6a9a5b;--wn:#c4a35a;--dg:#c44536;--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px)}
@@ -38,8 +41,11 @@ button:active{transform:scale(.98)}button:disabled{opacity:.4;pointer-events:non
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.8rem}
 .cl{background:var(--sf2);border-radius:.45rem;padding:.45rem .6rem}.cl label{display:block;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mu)}.cl value{font-family:"IBM Plex Mono",monospace;font-size:.9rem}
 .hi{display:none!important}
-</style></head><body>
-<div id="app"><canvas id="c"></canvas>
+</style>
+</head>
+<body>
+<div id="app">
+<canvas id="c"></canvas>
 <div id="hud" class="hi"><div class="hb" id="hb"></div><div id="nr" class="nr hi"></div></div>
 <div id="tb"><button type="button" class="ib" id="bp">❚❚</button><button type="button" class="ib" id="bm">♪</button></div>
 <div id="sk"><div id="kb"></div></div>
@@ -47,5 +53,130 @@ button:active{transform:scale(.98)}button:disabled{opacity:.4;pointer-events:non
 <div id="ui"></div>
 <div class="br"><a href="../">STEALTHBORE</a> · SteerHead</div>
 </div>
-<script src="game.js"></script>
-</body></html>
+<script>
+(function(){
+const B=4.5,F=1/60;
+const U={gas:{s:"GAS",c:"#d6b325"},electric:{s:"ELEC",c:"#c44536"},water:{s:"H2O",c:"#3b7eb5"},sewer:{s:"SEW",c:"#5d8f4e"},fiber:{s:"FO",c:"#c36b2a"},storm:{s:"STM",c:"#6a8b86"}};
+const K=Object.keys(U);
+const J=[
+{id:"service",name:"Backyard Service",sub:"160 ft gas drop",L:160,md:22,tg:8.5,en:3.4,ex:4,nu:6,bd:9,cr:15,prod:{name:"2 in PE gas",od:2.375,c:"#d6b325"},ream:[6,8,10],pipes:[{name:"2 in PE gas",od:2.375,c:"#d6b325"},{name:"4 in PE water",od:4.5,c:"#3b7eb5"}],brief:"Pilot, pre-ream, pull product. Bigger iron, tighter locates."},
+{id:"fiber",name:"Neighborhood Fiber",sub:"240 ft mainline",L:240,md:26,tg:10,en:3.6,ex:4.2,nu:11,bd:10,cr:16,prod:{name:"1.25 in HDPE duct",od:1.66,c:"#c36b2a"},ream:[6,8,10],pipes:[{name:"1.25 in HDPE duct",od:1.66,c:"#c36b2a"},{name:"2 in PE gas",od:2.375,c:"#d6b325"}],brief:"Tight easement. Fat reamer will kiss stacked locates."},
+{id:"downtown",name:"Main Street",sub:"320 ft crossing",L:320,md:32,tg:14,en:4,ex:4.5,nu:17,bd:11,cr:17,prod:{name:"6 in C900 water",od:6.9,c:"#3b7eb5"},ream:[8,10,12,16],pipes:[{name:"4 in PE water",od:4.5,c:"#3b7eb5"},{name:"6 in C900 water",od:6.9,c:"#3b7eb5"},{name:"8 in HDPE sewer",od:8.625,c:"#5d8f4e"}],brief:"Downtown nest. 16 in is a hog."}
+];
+const rF=o=>o/24,rec=o=>Math.max(6,Math.ceil(o*1.5/2)*2);
+function mul(s){let a=s>>>0;return()=>{a=(a+0x6d2b79f5)>>>0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}};
+const sm=t=>{t=Math.max(0,Math.min(1,t));return t*t*(3-2*t)};
+function dY(x,j){const L=j.L,dn=Math.min(48,L*.2),up=L*.78;if(x<=0)return j.en;if(x<dn)return j.en+(j.tg-j.en)*sm(x/dn);if(x>up)return j.tg+(j.ex-j.tg)*sm((x-up)/Math.max(1,L-up));return j.tg+Math.sin(x*.045)*.35}
+const wr=a=>{while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a};
+const tT=(c,w,m)=>{const d=wr(w-c);return wr(c+Math.max(-m,Math.min(m,d)))};
+function dC(px,py,x,y,h){const ax=x-h,bx=x+h,t=Math.max(0,Math.min(1,(px-ax)/Math.max(1e-4,bx-ax)));return Math.hypot(px-(ax+(bx-ax)*t),py-y)}
+function dP(x,y,p){if(p.length<2)return 0;let b=999;for(let i=1;i<p.length;i++){const a=p[i-1],c=p[i];if(Math.max(a.x,c.x)<x-5||Math.min(a.x,c.x)>x+5)continue;const abx=c.x-a.x,aby=c.y-a.y,l2=abx*abx+aby*aby||1;const t=Math.max(0,Math.min(1,((x-a.x)*abx+(y-a.y)*aby)/l2));const d=Math.hypot(x-(a.x+abx*t),y-(a.y+aby*t));if(d<b)b=d}return b}
+function rem(path,pipes,tr){let d=99,k=null,st=0;for(const p of pipes){const r=dP(p.x,p.y,path)-p.r-tr;if(r<d){d=r;k=p.kind;st=p.x}}return{d,k,st}}
+
+let mode="menu",job=J[0],sim=null;
+let view={cx:0,cy:0,tr:0,fr:0,fl:0,t:0,pt:[],ft:[]};
+let keys=new Set(),joy={x:0,y:0},yaw=0,coarse=matchMedia("(pointer: coarse)").matches||"ontouchstart"in window;
+let acc=0,last=performance.now();
+const cv=document.getElementById("c"),ctx=cv.getContext("2d");
+const ui=document.getElementById("ui"),hud=document.getElementById("hud"),hb=document.getElementById("hb"),nr=document.getElementById("nr");
+const sk=document.getElementById("sk"),kb=document.getElementById("kb"),yw=document.getElementById("yw");
+
+function fit(){const d=Math.min(devicePixelRatio||1,2),w=cv.clientWidth,h=cv.clientHeight;cv.width=Math.max(1,w*d|0);cv.height=Math.max(1,h*d|0)}
+function place(j,rng){const ps=[];let g=0;while(ps.length<j.nu&&g++<j.nu*20){const x=18+rng()*(j.L-30),gy=dY(x,j),r=.3+rng()*.5,h=rng()<.2?1.2+rng()*3:0;let y=rng()<.34?gy:rng()<.72?gy+(rng()<.5?-1:1)*(1.2+rng()*2.2):2.8+rng()*(j.md-4.5);y=Math.max(r+1.7,Math.min(j.md-r-.7,y));let ok=1;for(const p of ps){if(dC(x,y,p.x,p.y,p.h+h)<p.r+r+1.5){ok=0;break}}if(!ok)continue;ps.push({kind:K[rng()*K.length|0],x,y,r,h,cl:0,mc:99})}return ps}
+function mk(j,seed){const jj=JSON.parse(JSON.stringify(j)),rng=mul(seed);return{job:jj,x:5.2,y:jj.en,hd:.38,sp:jj.cr*.8,path:[{x:5.2,y:jj.en}],trail:[{x:5.2,y:jj.en}],pipes:place(jj,rng),sc:0,ft:0,clears:0,oga:0,ogs:0,alive:1,won:0,fail:"",nd:99,nk:null,lpx:5.2,ph:"pilot",pg:null,tool:{k:"head",name:"4.5 in bit",od:B,c:"#c5ccd1"},tr:rF(B),hr:rF(B),stk:0,rp:0}}
+function begin(tool){const e=sim.path[sim.path.length-1];sim.tool=tool;sim.tr=rF(tool.od);sim.ph=tool.k==="pipe"?"pull":"ream";sim.pg=null;sim.alive=1;sim.won=0;sim.fail="";sim.stk=0;sim.x=e?e.x:sim.job.L-2;sim.y=e?e.y:sim.job.ex;sim.hd=Math.PI;sim.sp=sim.job.cr*(tool.k==="pipe"?.62:.72);sim.trail=[{x:sim.x,y:sim.y}];sim.lpx=sim.x;sim.nd=99;sim.nk=null;view.ft.push({x:sim.x,y:sim.y-2,tx:"HOOKED "+tool.name,l:1.1,m:1.1});view.fr=.16}
+function fail(r){sim.alive=0;sim.won=0;sim.fail=r;sim.pg=null;view.tr=1;view.fr=.12;view.fl=.65}
+function burst(x,y,n,c){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=(.3+Math.random())*9;view.pt.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:.4+Math.random()*.4,m:.7,sz:.08+Math.random()*.12,c})}if(view.pt.length>200)view.pt.splice(0,view.pt.length-200)}
+function flo(x,y,t){view.ft.push({x,y,tx:t,l:1.1,m:1.1});if(view.ft.length>12)view.ft.shift()}
+
+function step(mx,my,dt){
+if(!sim.alive||sim.pg)return;
+const mag=Math.hypot(mx,my),drag=1/(1+sim.tr*1.15),cr=sim.job.cr*drag*(sim.ph==="pull"?.78:sim.ph==="ream"?.86:1);
+if(mag>.12){const w=Math.atan2(my,mx),tu=(sim.sp/Math.max(6,sim.job.bd+sim.tr*4))*dt;sim.hd=tT(sim.hd,w,tu);const tg=cr*(.72+.55*mag);sim.sp+=(tg-sim.sp)*(1-Math.exp(-3.2*dt))}
+else sim.sp+=(cr*.88-sim.sp)*(1-Math.exp(-1.4*dt));
+sim.sp=Math.max(5.2,Math.min(cr*1.7,sim.sp));
+sim.x+=Math.cos(sim.hd)*sim.sp*dt;sim.y+=Math.sin(sim.hd)*sim.sp*dt;
+if(Math.hypot(sim.x-sim.lpx,0)>.32||Math.abs(sim.y-(sim.trail.at(-1)?.y||0))>.2){if(sim.ph==="pilot")sim.path.push({x:sim.x,y:sim.y});sim.trail.push({x:sim.x,y:sim.y});sim.lpx=sim.x}
+sim.ft=sim.x;sim.sc+=sim.sp*dt*(sim.ph==="pilot"?2.4:1.6);
+const gy=dY(sim.x,sim.job);sim.ogs++;if(Math.abs(sim.y-gy)<2.1)sim.oga++;
+let nearest=99,nk=null;
+for(const p of sim.pipes){const gap=dC(sim.x,sim.y,p.x,p.y,p.h)-p.r,cl=gap-sim.tr;p.mc=Math.min(p.mc,gap);if(cl<nearest){nearest=cl;nk=p.kind}if(cl<=0){fail("STRIKE - "+p.kind.toUpperCase());burst(sim.x,sim.y,36,"#c44536");return}
+if(sim.ph==="pilot"&&!p.cl&&sim.x>p.x+p.h+1.2){p.cl=1;sim.clears++;const close=cl<1.15;sim.sc+=close?180:120;flo(p.x,p.y-1.2,(close?"CLOSE +":"CLEAR +")+(close?180:120))}}
+sim.nd=nearest;sim.nk=nearest<8?nk:null;
+if(sim.y-sim.tr<.08&&!(sim.x>-2&&sim.x<12&&sim.y<sim.job.en+1.4)&&!(sim.x>sim.job.L-8&&sim.x<sim.job.L+6&&sim.y<sim.job.ex+1.6)){fail("DAYLIGHT");return}
+if(sim.y>sim.job.md+.4){fail("LOST THE HEAD");return}if(sim.x<-6){fail("BACKED OUT");return}
+if(sim.ph!=="pilot"&&dP(sim.x,sim.y,sim.path)>1.7+sim.tr){fail(sim.ph==="ream"?"WALKED THE REAMER":"LEFT THE HOLE");return}
+if(sim.ph==="pull"){const need=rF(sim.tool.od+1);if(need>sim.hr+.01){sim.stk+=dt;sim.sp*=Math.max(.15,1-dt*1.2);if(sim.stk>1.6){fail("STUCK - ream it bigger");return}}}
+if(sim.ph==="pilot"){if(sim.x>sim.job.L-5.5&&sim.x<sim.job.L+4.5&&sim.y>.25&&sim.y<sim.job.ex+1.35){const g=sim.ogs?sim.oga/sim.ogs:0;sim.sc+=400+Math.round(g*300);flo(sim.x,sim.y-2,"PILOT OUT");burst(sim.x,sim.y,28,"#6a9a5b");sim.pg="ream";sim.sp=0;view.tr=.2}}
+else if(sim.x>-1&&sim.x<11.5&&sim.y>.2&&sim.y<sim.job.en+1.5){if(sim.ph==="ream"){sim.hr=Math.max(sim.hr,sim.tr);sim.rp++;sim.sc+=Math.round(180+sim.tool.od*18);flo(sim.x,sim.y-2,"REAMED "+sim.tool.od.toFixed(0)+" in");burst(sim.x,sim.y,22,"#c4a35a");sim.pg="pull";sim.sp=0;view.tr=.16}
+else{if(rF(sim.tool.od+1)>sim.hr+.01){fail("STUCK - ream it bigger");return}sim.alive=0;sim.won=1;sim.sc+=Math.abs(sim.tool.od-job.prod.od)<.05?700:400;flo(sim.x,sim.y-2,Math.abs(sim.tool.od-job.prod.od)<.05?"PRODUCT HOME":"OFF TICKET");burst(sim.x,sim.y,34,"#6a9a5b");view.tr=.25}}
+}
+function sV(dt){view.t+=dt;const tx=sim.x+Math.cos(sim.hd)*12,ty=sim.y+Math.sin(sim.hd)*5,k=1-Math.exp(-4.2*dt);view.cx+=(tx-view.cx)*k;view.cy+=(ty-view.cy)*k;view.tr=Math.max(0,view.tr-dt*1.8);view.fl=Math.max(0,view.fl-dt*2.4);if(view.fr>0)view.fr=Math.max(0,view.fr-dt);for(const p of view.pt){p.l-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=6*dt;p.vx*=.98}view.pt=view.pt.filter(p=>p.l>0);for(const f of view.ft){f.l-=dt;f.y-=dt*1.4}view.ft=view.ft.filter(f=>f.l>0)}
+
+function render(){
+const w=cv.width,h=cv.height,ppf=Math.min(w/86,h/32),sh=view.tr*view.tr,sx=sh*Math.sin(view.t*40)*14,sy=sh*Math.cos(view.t*37)*10;
+const S=(wx,wy)=>({x:(wx-view.cx)*ppf+w*.4+sx,y:(wy-view.cy)*ppf+h*.52+sy});
+ctx.clearRect(0,0,w,h);const gnd=S(0,0);const sky=ctx.createLinearGradient(0,0,0,gnd.y);sky.addColorStop(0,"#9eb6c6");sky.addColorStop(1,"#c5d2d8");ctx.fillStyle=sky;ctx.fillRect(0,0,w,Math.max(0,gnd.y));
+for(const [y1,y2,c] of [[0,1.15,"#35502c"],[1.15,4.6,"#7a5a38"],[4.6,11.2,"#c3a06a"],[11.2,20.5,"#9a6644"],[20.5,80,"#5a4336"]]){const a=S(view.cx-80,y1),b=S(view.cx+80,y2);ctx.fillStyle=c;ctx.fillRect(0,a.y,w,Math.max(1,b.y-a.y))}
+ctx.save();ctx.beginPath();ctx.rect(0,gnd.y,w,h);ctx.clip();
+ctx.strokeStyle="rgba(255,255,255,.07)";ctx.lineWidth=1;for(let d=5;d<=sim.job.md+5;d+=5){const p=S(view.cx,d);ctx.beginPath();ctx.moveTo(0,p.y);ctx.lineTo(w,p.y);ctx.stroke();ctx.fillStyle="rgba(255,255,255,.28)";ctx.font=Math.max(11,11*(w/1280)|0)+'px "IBM Plex Mono",monospace';ctx.fillText(d+" ft",12,p.y-4)}
+ctx.setLineDash([8,8]);ctx.strokeStyle="rgba(236,236,232,.35)";ctx.lineWidth=2;ctx.beginPath();let fr=1;for(let x=view.cx-50;x<=Math.min(sim.job.L,view.cx+70);x+=1.2){const p=S(x,dY(x,sim.job));if(fr){ctx.moveTo(p.x,p.y);fr=0}else ctx.lineTo(p.x,p.y)}ctx.stroke();ctx.setLineDash([]);
+if(sim.path.length>1){const hw=Math.max(.22,(sim.ph==="pilot"?sim.tr:sim.hr)*3.2);ctx.lineCap="round";ctx.strokeStyle="#1a120c";ctx.lineWidth=hw*2.15*ppf;ctx.beginPath();for(let i=0;i<sim.path.length;i++){const p=S(sim.path[i].x,sim.path[i].y);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.stroke();ctx.strokeStyle="#2c2118";ctx.lineWidth=hw*1.35*ppf;ctx.stroke()}
+if(sim.ph!=="pilot"&&sim.trail.length>1){ctx.lineCap="round";ctx.strokeStyle=sim.ph==="ream"?"#2a2118":sim.tool.c;ctx.lineWidth=sim.ph==="ream"?Math.max(.28,sim.tr*3.4)*2.2*ppf:Math.max(3,Math.max(.22,sim.tr*3.4)*2*ppf);ctx.beginPath();for(let i=0;i<sim.trail.length;i++){const p=S(sim.trail[i].x,sim.trail[i].y);i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y)}ctx.stroke()}
+for(const p of sim.pipes){if(p.x<view.cx-48||p.x>view.cx+68)continue;const m=U[p.kind],a=S(p.x-p.h,p.y),b=S(p.x+p.h,p.y),r=p.r*ppf;ctx.lineCap="round";ctx.strokeStyle=m.c;ctx.lineWidth=r*2;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();const lab=S(p.x,p.y-p.r-.7);ctx.font='600 '+Math.max(10,11*(ppf/14)|0)+'px "IBM Plex Sans",sans-serif';ctx.fillStyle=p.cl?"rgba(236,236,232,.35)":m.c;ctx.textAlign="center";ctx.fillText(m.s,lab.x,lab.y);ctx.textAlign="left"}
+ctx.restore();
+ctx.fillStyle="#2d4a28";ctx.fillRect(0,gnd.y-3,w,6);
+for(const pit of[{x0:0,x1:11,d:sim.job.en+.4},{x0:sim.job.L-7,x1:sim.job.L+4,d:sim.job.ex+.5}]){const a=S(pit.x0,0),b=S(pit.x1,pit.d);ctx.fillStyle="#1a140f";ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(a.x+8,b.y);ctx.lineTo(b.x-8,b.y);ctx.lineTo(b.x,a.y);ctx.closePath();ctx.fill()}
+const flag=S(sim.job.L,0);ctx.fillStyle="#ecece8";ctx.fillRect(flag.x,flag.y-28,2,28);ctx.fillStyle="#c44536";ctx.beginPath();ctx.moveTo(flag.x+2,flag.y-28);ctx.lineTo(flag.x+16,flag.y-22);ctx.lineTo(flag.x+2,flag.y-16);ctx.fill();
+const head=S(sim.x,sim.y);ctx.save();ctx.translate(head.x,head.y);ctx.rotate(sim.hd);const vis=Math.max(.55,sim.tr*3.6)*ppf;
+if(sim.ph==="ream"){ctx.fillStyle="#5c6166";ctx.fillRect(-2.8*ppf,-vis*.22,2.2*ppf,vis*.44);ctx.save();ctx.rotate(view.t*16);for(let i=0;i<6;i++){ctx.rotate(Math.PI/3);ctx.fillStyle=i%2?"#c5ccd1":"#9aa3a8";ctx.beginPath();ctx.moveTo(vis*.12,-vis*.16);ctx.lineTo(vis*1.05,-vis*.08);ctx.lineTo(vis*1.05,vis*.08);ctx.lineTo(vis*.12,vis*.16);ctx.closePath();ctx.fill()}ctx.fillStyle="#d8dde0";ctx.beginPath();ctx.arc(0,0,vis*.28,0,Math.PI*2);ctx.fill();ctx.restore()}
+else if(sim.ph==="pull"){const r=vis*.72;ctx.fillStyle=sim.tool.c;ctx.fillRect(-6.2*ppf,-r,5.8*ppf,r*2);ctx.fillStyle="rgba(255,255,255,.22)";ctx.fillRect(-6.2*ppf,-r,5.8*ppf,r*.35);ctx.fillStyle="#d8dde0";ctx.fillRect(-.4*ppf,-r*1.35,.8*ppf,r*2.7)}
+else{ctx.fillStyle="#8b9298";ctx.fillRect(-1.6*ppf,-.22*ppf,1.3*ppf,.44*ppf);ctx.fillStyle="#c5ccd1";ctx.beginPath();ctx.moveTo(-.3*ppf,-.32*ppf);ctx.lineTo(1.15*ppf,-.18*ppf);ctx.lineTo(1.15*ppf,.18*ppf);ctx.lineTo(-.3*ppf,.32*ppf);ctx.closePath();ctx.fill();ctx.fillStyle="#d8dde0";ctx.beginPath();ctx.moveTo(1.15*ppf,-.18*ppf);ctx.lineTo(1.85*ppf,0);ctx.lineTo(1.15*ppf,.18*ppf);ctx.closePath();ctx.fill()}
+ctx.restore();
+for(const p of view.pt){const s=S(p.x,p.y);ctx.globalAlpha=Math.max(0,p.l/p.m);ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(s.x,s.y,p.sz*ppf,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+ctx.font='600 '+Math.max(13,14*(w/1280)|0)+'px "Barlow Condensed",sans-serif';ctx.textAlign="center";
+for(const f of view.ft){const s=S(f.x,f.y);ctx.globalAlpha=Math.max(0,f.l/f.m);ctx.fillStyle="#ecece8";ctx.fillText(f.tx,s.x,s.y)}ctx.globalAlpha=1;ctx.textAlign="left";
+if(view.fl>0){ctx.fillStyle=`rgba(196,69,54,${view.fl*.35})`;ctx.fillRect(0,0,w,h)}
+}
+const inch=n=>n%1?n.toFixed(1):n.toFixed(0);
+function rUI(){
+const playing=mode==="play"||mode==="pause";
+hud.classList.toggle("hi",!playing);sk.classList.toggle("on",coarse&&mode==="play");yw.classList.toggle("on",coarse&&mode==="play");
+document.getElementById("bp").style.visibility=playing||mode==="pause"?"visible":"hidden";
+if(playing&&sim){const pl=sim.ph==="pilot"?"Pilot":sim.ph==="ream"?"Pre-ream pullback":"Pipe pull";const tr=sim.ph==="pilot"?Math.max(0,sim.job.L-sim.x):Math.max(0,sim.x-5);
+hb.innerHTML=`<div class="st"><label>Depth</label><value>${sim.y.toFixed(1)} ft</value></div><div class="st"><label>Sta.</label><value>${Math.max(0,sim.x).toFixed(0)} ft</value></div><div class="st"><label>Score</label><value>${Math.round(sim.sc)}</value></div><div class="st"><label>${sim.ph==="pilot"?"Bit":sim.ph==="ream"?"Reamer":"Product"}</label><value>${inch(sim.tool.od)} in</value></div><div class="st"><label>Hole</label><value>${inch(sim.hr*24)} in</value></div><div class="st"><label>To rig</label><value>${tr.toFixed(0)} ft</value></div><div class="st" style="margin-left:auto;font-family:Barlow Condensed,sans-serif;font-size:1rem;color:var(--mu)">${pl}</div>`;
+if(sim.nk&&sim.nd<6){nr.classList.remove("hi");nr.classList.toggle("hot",sim.nd<1.2);nr.textContent=U[sim.nk].s+" "+sim.nd.toFixed(1)+" ft"}else nr.classList.add("hi")}
+if(mode==="menu"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">Stealthbore · HDD trainer</p><h1>STEERHEAD</h1><p class="ld">Pilot the bore. Hook a reamer. Pull the pipe. Miss every locate.</p><div class="row"><button class="bp" id="gj">Choose a job</button><a class="bs" href="../" style="text-decoration:none;line-height:48px">Back to site</a></div><p class="mo">${coarse?"Stick = pitch · buttons = left/right":"WASD or arrows"} · bigger iron, tighter locates</p></div></div>`;document.getElementById("gj").onclick=()=>{mode="jobs";rUI()}}
+else if(mode==="jobs"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">Select shot</p><h2>Jobs</h2><div class="jobs" id="jl"></div><div class="row"><button class="bg" id="bm2">Back</button></div></div></div>`;const jl=document.getElementById("jl");J.forEach(j=>{const b=document.createElement("button");b.className="bb";b.innerHTML=`<span><span class="n">${j.name}</span><br><span class="m">${j.sub} · ${j.prod.name}</span></span>`;b.onclick=()=>{job=j;mode="brief";rUI()};jl.appendChild(b)});document.getElementById("bm2").onclick=()=>{mode="menu";rUI()}}
+else if(mode==="brief"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">${job.sub}</p><h2>${job.name}</h2><p class="ld">${job.brief}</p><p class="mo">1. Pilot 4.5 in · 2. Pre-ream ${job.ream.join(" / ")} in · 3. Pull ${job.prod.name}</p><div class="row"><button class="bp" id="sp">Spud in</button><button class="bs" id="bj">Jobs</button></div></div></div>`;document.getElementById("sp").onclick=()=>start(job);document.getElementById("bj").onclick=()=>{mode="jobs";rUI()}}
+else if(mode==="tool"){const hole=sim.hr*24,must=sim.rp<1;let h=`<div class="ov"><div class="pn"><p class="k">${must?"Pilot is out":"Hole opened · "+sim.rp+" pass"+(sim.rp===1?"":"es")}</p><h2>${must?"Hook a reamer":"Ream again or pull product"}</h2><p class="ld">Hole is ${inch(hole)} in. Ticket is ${sim.job.prod.name}.</p><p class="sl">Pre-ream</p><div class="jobs" id="rl"></div>`;if(must)h+=`<p class="mo" style="margin-top:1rem">Product stays on the racks until you open the hole.</p>`;else h+=`<p class="sl">Product pull</p><div class="jobs" id="pl"></div>`;h+=`</div></div>`;ui.innerHTML=h;
+const rl=document.getElementById("rl");sim.job.ream.forEach(od=>{const already=od<=hole+.05,t=rem(sim.path,sim.pipes,rF(od)),hit=!already&&t.d<0;let note="On spec";if(already)note="Already this size";else if(hit&&t.k)note=`Strikes ${U[t.k].s} · sta ${t.st.toFixed(0)}`;else if(t.d<.85&&t.k)note=`Close - ${t.d.toFixed(1)} ft to ${U[t.k].s}`;else if(od>=rec(sim.job.prod.od)+4)note="Fat - watch locates";else if(od<rec(sim.job.prod.od))note="Tight pull";const b=document.createElement("button");b.className="bb"+(hit?" dg":already?" dim":"");b.disabled=already;b.innerHTML=`<span class="n">${od} in flycutter</span><span class="m">${note}</span>`;b.onclick=()=>hook("reamer",od);rl.appendChild(b)});
+if(!must){const pl=document.getElementById("pl");sim.job.pipes.forEach(p=>{const fits=p.od+1<=hole+.05,on=Math.abs(p.od-sim.job.prod.od)<.05,note=fits?(on?"Fits · on ticket":"Fits · off ticket"):`WILL STICK - needs ~${(p.od+1.5).toFixed(0)} in hole`;const b=document.createElement("button");b.className="bb"+(fits?(on?" ok":""):" wn");b.innerHTML=`<span class="n">${p.name}</span><span class="m">${note}</span>`;b.onclick=()=>hook("pipe",p.od);pl.appendChild(b)})}}
+else if(mode==="pause"){ui.innerHTML=`<div class="ov"><div class="pn"><h2>Paused</h2><p class="ld">Steel holds. Locates don't move.</p><div class="row"><button class="bp" id="rs">Resume</button><button class="bs" id="lv">Leave job</button></div></div></div>`;document.getElementById("rs").onclick=()=>{mode="play";rUI()};document.getElementById("lv").onclick=()=>{mode="menu";sim=mk(J[0],7);view.cx=sim.x+10;view.cy=sim.y;rUI()}}
+else if(mode==="result"){const r=sim;ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">${r.won?"Shot complete":"Job failed"}</p><h2>${r.won?(Math.abs(r.tool.od-job.prod.od)<.05?"Product home":"Off ticket - still in"):r.fail}</h2><div class="g2"><div class="cl"><label>Score</label><value>${Math.round(r.sc)}</value></div><div class="cl"><label>Clears</label><value>${r.clears}</value></div><div class="cl"><label>Hole</label><value>${inch(r.hr*24)} in</value></div><div class="cl"><label>Product</label><value>${r.ph==="pull"||r.won?r.tool.name:job.prod.name}</value></div></div><div class="row"><button class="bp" id="rt">Run it again</button><button class="bs" id="tj">Jobs</button></div></div></div>`;document.getElementById("rt").onclick=()=>start(job);document.getElementById("tj").onclick=()=>{mode="jobs";rUI()}}
+else ui.innerHTML=""
+}
+function start(j){job=j;sim=mk(j,Date.now()%100000|0);view={cx:sim.x+10,cy:sim.y,tr:0,fr:0,fl:0,t:0,pt:[],ft:[]};mode="play";rUI()}
+function hook(kind,od){if(kind==="pipe"&&sim.rp<1)return;if(kind==="reamer"&&od<=sim.hr*24+.05)return;if(kind==="reamer")begin({k:"reamer",name:od+" in flycutter",od,c:"#9aa3a8"});else{const sp=sim.job.pipes.find(p=>p.od===od)||sim.job.prod;begin({k:"pipe",name:sp.name,od:sp.od,c:sp.c})}mode="play";rUI()}
+
+window.addEventListener("keydown",e=>{if(["KeyW","KeyA","KeyS","KeyD","ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","Enter","Escape","KeyP"].includes(e.code))e.preventDefault();keys.add(e.code)});
+window.addEventListener("keyup",e=>keys.delete(e.code));
+window.addEventListener("blur",()=>{keys.clear();joy={x:0,y:0};yaw=0});
+document.getElementById("bp").onclick=()=>{if(mode==="play"){mode="pause";rUI()}else if(mode==="pause"){mode="play";rUI()}};
+document.getElementById("bm").onclick=()=>{document.getElementById("bm").textContent=document.getElementById("bm").textContent==="♪"?"✕":"♪"};
+let pid=null;function sPos(e){const r=sk.getBoundingClientRect();let x=(e.clientX-(r.left+r.width/2))/(r.width*.42),y=(e.clientY-(r.top+r.height/2))/(r.height*.42);const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}return{x,y}}
+function setK(x,y){kb.style.transform=`translate(${x*36}px,${y*36}px)`}
+sk.addEventListener("pointerdown",e=>{pid=e.pointerId;sk.setPointerCapture(e.pointerId);const p=sPos(e);joy={x:p.x*.35,y:p.y};setK(p.x,p.y);e.preventDefault()});
+sk.addEventListener("pointermove",e=>{if(pid!==e.pointerId)return;const p=sPos(e);joy={x:p.x*.35,y:p.y};setK(p.x,p.y)});
+function clr(e){if(pid!==null&&e&&e.pointerId!==pid)return;pid=null;joy={x:0,y:0};setK(0,0)}
+sk.addEventListener("pointerup",clr);sk.addEventListener("pointercancel",clr);
+function hold(btn,dir){btn.addEventListener("pointerdown",e=>{yaw=dir;e.preventDefault()});const u=()=>{if(yaw===dir)yaw=0};btn.addEventListener("pointerup",u);btn.addEventListener("pointercancel",u);btn.addEventListener("pointerleave",u)}
+hold(document.getElementById("yL"),-1);hold(document.getElementById("yR"),1);
+matchMedia("(pointer: coarse)").addEventListener("change",e=>{coarse=e.matches;rUI()});
+function move(){let x=0,y=0;if(keys.has("KeyA")||keys.has("ArrowLeft"))x-=1;if(keys.has("KeyD")||keys.has("ArrowRight"))x+=1;if(keys.has("KeyW")||keys.has("ArrowUp"))y-=1;if(keys.has("KeyS")||keys.has("ArrowDown"))y+=1;x+=joy.x+yaw;y+=joy.y;const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}return{x,y}}
+function tick(now){const raw=Math.min(.1,(now-last)/1000);last=now;acc+=raw;while(acc>=F){acc-=F;if(view.fr>0){sV(F);continue}if(mode==="play"&&sim&&sim.alive&&!sim.pg){const mv=move();step(mv.x,mv.y,F);if(!sim.alive){mode="result";rUI()}else if(sim.pg){mode="tool";rUI()}}if(mode!=="pause"&&mode!=="tool")sV(F)}if(sim)render();if((mode==="menu"||mode==="jobs"||mode==="brief")&&sim&&(!sim.alive||sim.pg)&&view.fr<=0){sim=mk(J[1],(Date.now()+13)%100000);view.cx=sim.x+10;view.cy=sim.y}requestAnimationFrame(tick)}
+sim=mk(J[1],7);view.cx=sim.x+10;view.cy=sim.y;fit();window.addEventListener("resize",fit);rUI();last=performance.now();requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
