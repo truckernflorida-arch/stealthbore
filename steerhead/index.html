@@ -1,182 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="theme-color" content="#0c0d0e" />
-  <title>SteerHead — Stealthbore HDD Game</title>
-  <meta name="description" content="Pilot the bore, pre-ream, pull product. Miss every locate. Free HDD training game from Stealthbore LLC." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg: #0c0d0e;
-      --surface: #161718;
-      --surface-2: #1e1f21;
-      --fg: #ecece8;
-      --muted: #8b8d86;
-      --subtle: #5c5e58;
-      --border: #2c2d2f;
-      --primary: #14b8a6;
-      --primary-fg: #042f2e;
-      --ok: #6a9a5b;
-      --warn: #c4a35a;
-      --danger: #c44536;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
-    }
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0; height: 100%; background: var(--bg); color: var(--fg);
-      font-family: "IBM Plex Sans", system-ui, sans-serif;
-      overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none;
-    }
-    #app { position: relative; width: 100%; height: 100%; height: 100dvh; }
-    canvas { display: block; width: 100%; height: 100%; }
-    .overlay {
-      position: absolute; inset: 0; z-index: 10;
-      display: flex; align-items: flex-end; justify-content: center;
-      padding: max(1rem, var(--safe-top)) max(1rem, var(--safe-right)) max(1.25rem, var(--safe-bottom)) max(1rem, var(--safe-left));
-      background: linear-gradient(to top, rgba(12,13,14,.92) 0%, rgba(12,13,14,.55) 45%, transparent 100%);
-      overflow-y: auto; -webkit-overflow-scrolling: touch;
-    }
-    @media (min-width: 640px) {
-      .overlay { align-items: center; background: rgba(12,13,14,.72); backdrop-filter: blur(6px); }
-    }
-    .panel {
-      width: 100%; max-width: 28rem; background: var(--surface);
-      border: 1px solid var(--border); border-radius: 1rem; padding: 1.25rem 1.35rem 1.5rem;
-    }
-    .kicker { font-size: .7rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); margin: 0 0 .35rem; }
-    h1, h2 { font-family: "Barlow Condensed", sans-serif; font-weight: 700; letter-spacing: -.02em; margin: 0; }
-    h1 { font-size: clamp(2.75rem, 10vw, 4.25rem); line-height: .95; }
-    h2 { font-size: 1.85rem; }
-    .lead { color: var(--muted); font-size: .95rem; line-height: 1.5; margin: .75rem 0 0; }
-    .row { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.1rem; }
-    button, .btn {
-      appearance: none; border: none; cursor: pointer;
-      font-family: inherit; font-weight: 600; font-size: .95rem;
-      min-height: 48px; padding: 0 1.15rem; border-radius: .65rem;
-      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
-      transition: opacity .15s, transform .12s;
-    }
-    button:active, .btn:active { transform: scale(.98); }
-    button:disabled { opacity: .4; pointer-events: none; }
-    .btn-primary { background: var(--primary); color: var(--primary-fg); }
-    .btn-secondary { background: var(--surface-2); color: var(--fg); border: 1px solid var(--border); }
-    .btn-ghost { background: transparent; color: var(--muted); }
-    .btn-block {
-      width: 100%; justify-content: space-between; text-align: left;
-      background: var(--surface-2); border: 1px solid var(--border); color: var(--fg);
-      padding: .85rem 1rem; border-radius: .65rem;
-    }
-    .btn-block .name { font-family: "Barlow Condensed", sans-serif; font-size: 1.35rem; font-weight: 700; }
-    .btn-block .note { font-family: "IBM Plex Mono", monospace; font-size: .72rem; color: var(--muted); }
-    .btn-block.danger .note { color: var(--danger); }
-    .btn-block.warn .note { color: var(--warn); }
-    .btn-block.ok .note { color: var(--ok); }
-    .btn-block.dim { opacity: .45; }
-    .jobs { display: grid; gap: .55rem; margin-top: .85rem; }
-    .odbar { height: 6px; margin-top: .45rem; background: var(--surface); border-radius: 99px; overflow: hidden; }
-    .odbar > i { display: block; height: 100%; background: var(--primary); border-radius: 99px; }
-    .odbar.danger > i { background: var(--danger); }
-    .section-label { font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--subtle); margin: 1rem 0 .4rem; }
-    #hud {
-      position: absolute; top: 0; left: 0; right: 0; z-index: 8; pointer-events: none;
-      padding: max(.65rem, var(--safe-top)) max(.65rem, var(--safe-right)) 0 max(.65rem, var(--safe-left));
-    }
-    .hud-bar {
-      display: flex; flex-wrap: wrap; gap: .55rem 1rem; align-items: flex-end;
-      max-width: 56rem; margin: 0 auto; padding: .55rem .75rem; padding-right: 5.5rem;
-      background: rgba(22,23,24,.82); border: 1px solid var(--border); border-radius: .65rem;
-      backdrop-filter: blur(6px);
-    }
-    .stat label { display: block; font-size: .62rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-    .stat value { font-family: "IBM Plex Mono", monospace; font-size: .85rem; }
-    .near {
-      display: inline-block; margin-top: .45rem; padding: .3rem .65rem; border-radius: .4rem;
-      font-family: "IBM Plex Mono", monospace; font-size: .72rem;
-      border: 1px solid rgba(196,163,90,.35); background: rgba(22,23,24,.85); color: var(--warn);
-    }
-    .near.hot { border-color: rgba(196,69,54,.45); background: rgba(196,69,54,.18); color: var(--fg); }
-    #topbtns {
-      position: absolute; top: max(.65rem, var(--safe-top)); right: max(.65rem, var(--safe-right));
-      z-index: 20; display: flex; gap: .4rem; pointer-events: auto;
-    }
-    .iconbtn {
-      width: 44px; height: 44px; border-radius: .55rem; border: 1px solid var(--border);
-      background: rgba(22,23,24,.88); color: var(--fg); backdrop-filter: blur(6px);
-      display: grid; place-items: center; padding: 0;
-    }
-    #stick {
-      position: absolute; z-index: 15;
-      left: max(1rem, var(--safe-left));
-      bottom: max(1.25rem, var(--safe-bottom));
-      width: 132px; height: 132px; border-radius: 50%;
-      border: 1px solid var(--border); background: rgba(22,23,24,.45);
-      backdrop-filter: blur(4px); touch-action: none; display: none;
-    }
-    #stick.on { display: block; }
-    #knob {
-      position: absolute; width: 48px; height: 48px; border-radius: 50%;
-      left: 50%; top: 50%; margin: -24px 0 0 -24px;
-      background: rgba(20,184,166,.35); border: 2px solid var(--primary);
-      pointer-events: none;
-    }
-    #yaw {
-      position: absolute; z-index: 15; display: none; gap: .5rem;
-      right: max(1rem, var(--safe-right));
-      bottom: max(1.25rem, var(--safe-bottom));
-    }
-    #yaw.on { display: flex; }
-    #yaw button {
-      width: 56px; height: 56px; border-radius: .75rem;
-      background: rgba(22,23,24,.55); border: 1px solid var(--border); color: var(--fg);
-      font-size: 1.25rem; font-weight: 700;
-    }
-    .brand {
-      position: absolute; z-index: 5; left: max(.75rem, var(--safe-left));
-      bottom: max(.5rem, var(--safe-bottom)); font-size: .65rem; color: var(--subtle);
-      pointer-events: none;
-    }
-    .brand a { color: var(--primary); text-decoration: none; pointer-events: auto; }
-    .chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .85rem; }
-    .chip {
-      font-family: "IBM Plex Mono", monospace; font-size: .68rem; padding: .25rem .5rem;
-      border: 1px solid var(--border); border-radius: .3rem;
-    }
-    .chip i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: .35rem; }
-    .mono { font-family: "IBM Plex Mono", monospace; font-size: .75rem; color: var(--subtle); margin-top: .65rem; }
-    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .9rem; }
-    .cell { background: var(--surface-2); border-radius: .5rem; padding: .55rem .7rem; }
-    .cell label { display: block; font-size: .62rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
-    .cell value { font-family: "IBM Plex Mono", monospace; font-size: .95rem; }
-    .hidden { display: none !important; }
-  </style>
-</head>
-<body>
-  <div id="app">
-    <canvas id="c"></canvas>
-    <div id="hud" class="hidden">
-      <div class="hud-bar" id="hudbar"></div>
-      <div id="near" class="near hidden"></div>
-    </div>
-    <div id="topbtns">
-      <button type="button" class="iconbtn" id="btnPause" aria-label="Pause" title="Pause">❚❚</button>
-      <button type="button" class="iconbtn" id="btnMute" aria-label="Mute" title="Mute">♪</button>
-    </div>
-    <div id="stick" aria-label="Steer"><div id="knob"></div></div>
-    <div id="yaw">
-      <button type="button" id="yawL" aria-label="Turn left">◀</button>
-      <button type="button" id="yawR" aria-label="Turn right">▶</button>
-    </div>
-    <div id="ui"></div>
-    <div class="brand"><a href="../">STEALTHBORE</a> · SteerHead</div>
-  </div>
-  <script src="game.js"></script>
-</body>
-</html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="theme-color" content="#0c0d0e"/><title>SteerHead — Stealthbore</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#0c0d0e;--sf:#161718;--sf2:#1e1f21;--fg:#ecece8;--mu:#8b8d86;--bd:#2c2d2f;--ac:#14b8a6;--ok:#6a9a5b;--wn:#c4a35a;--dg:#c44536;--st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px);--sl:env(safe-area-inset-left,0px);--sr:env(safe-area-inset-right,0px)}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:"IBM Plex Sans",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+#app{position:relative;width:100%;height:100%;height:100dvh}canvas{display:block;width:100%;height:100%}
+.ov{position:absolute;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;padding:max(1rem,var(--st)) max(1rem,var(--sr)) max(1.25rem,var(--sb)) max(1rem,var(--sl));background:linear-gradient(to top,rgba(12,13,14,.92),rgba(12,13,14,.5) 45%,transparent);overflow-y:auto}
+@media(min-width:640px){.ov{align-items:center;background:rgba(12,13,14,.72)}}
+.pn{width:100%;max-width:26rem;background:var(--sf);border:1px solid var(--bd);border-radius:1rem;padding:1.2rem}
+.k{font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--mu);margin:0 0 .3rem}
+h1,h2{font-family:"Barlow Condensed",sans-serif;font-weight:700;margin:0}h1{font-size:clamp(2.5rem,10vw,3.8rem);line-height:.95}h2{font-size:1.7rem}
+.ld{color:var(--mu);font-size:.92rem;line-height:1.45;margin:.65rem 0 0}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
+button{appearance:none;border:none;cursor:pointer;font:600 .95rem inherit;min-height:48px;padding:0 1rem;border-radius:.6rem;display:inline-flex;align-items:center;justify-content:center}
+button:active{transform:scale(.98)}button:disabled{opacity:.4;pointer-events:none}
+.bp{background:var(--ac);color:#042f2e}.bs{background:var(--sf2);color:var(--fg);border:1px solid var(--bd)}.bg{background:0;color:var(--mu)}
+.bb{width:100%;justify-content:space-between;text-align:left;background:var(--sf2);border:1px solid var(--bd);color:var(--fg);padding:.75rem 1rem;border-radius:.6rem}
+.bb .n{font-family:"Barlow Condensed",sans-serif;font-size:1.25rem;font-weight:700}.bb .m{font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:var(--mu)}
+.bb.dg .m{color:var(--dg)}.bb.wn .m{color:var(--wn)}.bb.ok .m{color:var(--ok)}.bb.dim{opacity:.45}
+.jobs{display:grid;gap:.45rem;margin-top:.7rem}.sl{font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:#5c5e58;margin:.9rem 0 .3rem}
+#hud{position:absolute;top:0;left:0;right:0;z-index:8;pointer-events:none;padding:max(.55rem,var(--st)) max(.55rem,var(--sr)) 0 max(.55rem,var(--sl))}
+.hb{display:flex;flex-wrap:wrap;gap:.45rem .9rem;max-width:56rem;margin:0 auto;padding:.45rem .65rem;padding-right:5rem;background:rgba(22,23,24,.85);border:1px solid var(--bd);border-radius:.55rem}
+.st label{display:block;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--mu)}.st value{font-family:"IBM Plex Mono",monospace;font-size:.82rem}
+.nr{display:inline-block;margin-top:.35rem;padding:.22rem .55rem;border-radius:.3rem;font-family:"IBM Plex Mono",monospace;font-size:.68rem;border:1px solid rgba(196,163,90,.35);background:rgba(22,23,24,.85);color:var(--wn)}
+.nr.hot{border-color:rgba(196,69,54,.45);background:rgba(196,69,54,.18);color:var(--fg)}
+#tb{position:absolute;top:max(.55rem,var(--st));right:max(.55rem,var(--sr));z-index:20;display:flex;gap:.3rem}
+.ib{width:44px;height:44px;border-radius:.5rem;border:1px solid var(--bd);background:rgba(22,23,24,.9);color:var(--fg);display:grid;place-items:center;padding:0}
+#sk{position:absolute;z-index:15;left:max(1rem,var(--sl));bottom:max(1.15rem,var(--sb));width:128px;height:128px;border-radius:50%;border:1px solid var(--bd);background:rgba(22,23,24,.45);touch-action:none;display:none}
+#sk.on{display:block}#kb{position:absolute;width:46px;height:46px;border-radius:50%;left:50%;top:50%;margin:-23px 0 0 -23px;background:rgba(20,184,166,.35);border:2px solid var(--ac);pointer-events:none}
+#yw{position:absolute;z-index:15;display:none;gap:.45rem;right:max(1rem,var(--sr));bottom:max(1.15rem,var(--sb))}
+#yw.on{display:flex}#yw button{width:54px;height:54px;border-radius:.7rem;background:rgba(22,23,24,.55);border:1px solid var(--bd);color:var(--fg);font-size:1.15rem}
+.br{position:absolute;z-index:5;left:max(.65rem,var(--sl));bottom:max(.4rem,var(--sb));font-size:.62rem;color:#5c5e58;pointer-events:none}
+.br a{color:var(--ac);text-decoration:none;pointer-events:auto}
+.mo{font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:#5c5e58;margin-top:.55rem}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.8rem}
+.cl{background:var(--sf2);border-radius:.45rem;padding:.45rem .6rem}.cl label{display:block;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mu)}.cl value{font-family:"IBM Plex Mono",monospace;font-size:.9rem}
+.hi{display:none!important}
+</style></head><body>
+<div id="app"><canvas id="c"></canvas>
+<div id="hud" class="hi"><div class="hb" id="hb"></div><div id="nr" class="nr hi"></div></div>
+<div id="tb"><button type="button" class="ib" id="bp">❚❚</button><button type="button" class="ib" id="bm">♪</button></div>
+<div id="sk"><div id="kb"></div></div>
+<div id="yw"><button type="button" id="yL">◀</button><button type="button" id="yR">▶</button></div>
+<div id="ui"></div>
+<div class="br"><a href="../">STEALTHBORE</a> · SteerHead</div>
+</div>
+<script src="game.js"></script>
+</body></html>

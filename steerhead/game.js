@@ -1,8 +1,6 @@
 (function(){
-  function load(src){return fetch(src).then(r=>r.text());}
-  Promise.all([load('game.part1.js'),load('game.part2.js')]).then(function(parts){
-    var s=document.createElement('script');
-    s.textContent=parts[0]+parts[1];
-    document.body.appendChild(s);
-  }).catch(function(e){console.error(e);document.body.innerHTML='<p style="color:#ecece8;font-family:sans-serif;padding:2rem">Failed to load SteerHead. Hard-refresh and try again.</p>';});
+function load(s){return fetch(s).then(function(r){return r.text()})}
+Promise.all([load('g0.js'),load('g1.js'),load('g2.js'),load('g3.js')]).then(function(p){
+var s=document.createElement('script');s.textContent=p.join('');document.body.appendChild(s)
+}).catch(function(e){console.error(e);document.body.insertAdjacentHTML('beforeend','<p style="color:#ecece8;padding:2rem;font-family:sans-serif">Failed to load. Hard-refresh.</p>')})
 })();
