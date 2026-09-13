@@ -40,6 +40,10 @@ button:active{transform:scale(.98)}button:disabled{opacity:.4;pointer-events:non
 .mo{font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:#5c5e58;margin-top:.55rem}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-top:.8rem}
 .cl{background:var(--sf2);border-radius:.45rem;padding:.45rem .6rem}.cl label{display:block;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--mu)}.cl value{font-family:"IBM Plex Mono",monospace;font-size:.9rem}
+
+.spd{display:flex;gap:.4rem;margin:.55rem 0 .85rem}
+.spd button{flex:1;min-height:44px;border-radius:.5rem;border:1px solid var(--bd);background:var(--sf2);color:var(--fg);font:600 .85rem "IBM Plex Sans",sans-serif;padding:.55rem .4rem;touch-action:manipulation}
+.spd button.on{border-color:var(--ac);background:rgba(20,184,166,.18);color:var(--ac)}
 .hi{display:none!important}
 </style>
 </head>
@@ -47,7 +51,7 @@ button:active{transform:scale(.98)}button:disabled{opacity:.4;pointer-events:non
 <div id="app">
 <canvas id="c"></canvas>
 <div id="hud" class="hi"><div class="hb" id="hb"></div><div id="nr" class="nr hi"></div></div>
-<div id="tb"><button type="button" class="ib" id="bp">❚❚</button><button type="button" class="ib" id="bm">♪</button></div>
+<div id="tb"><button type="button" class="ib" id="bp">❚❚</button><button type="button" class="ib" id="bsp" title="Pace">1×</button><button type="button" class="ib" id="bm">♪</button></div>
 <div id="sk"><div id="kb"></div></div>
 <div id="yw"><button type="button" id="yL">◀</button><button type="button" id="yR">▶</button></div>
 <div id="ui"></div>
@@ -77,6 +81,16 @@ let mode="menu",job=J[0],sim=null;
 let view={cx:0,cy:0,tr:0,fr:0,fl:0,t:0,pt:[],ft:[]};
 let keys=new Set(),joy={x:0,y:0},yaw=0,coarse=matchMedia("(pointer: coarse)").matches||"ontouchstart"in window;
 let acc=0,last=performance.now();
+
+const SPEED_OPTS=[{id:"slow",label:"Slow",mul:.5,short:"½×"},{id:"normal",label:"Normal",mul:.72,short:"¾×"},{id:"fast",label:"Fast",mul:1,short:"1×"}];
+function loadSpeed(){try{const s=localStorage.getItem("steerhead-speed");if(s&&SPEED_OPTS.some(o=>o.id===s))return s}catch(e){}return coarse?"slow":"normal"}
+let speedId=loadSpeed();
+function speedMul(){const o=SPEED_OPTS.find(x=>x.id===speedId);return o?o.mul:.72}
+function speedShort(){const o=SPEED_OPTS.find(x=>x.id===speedId);return o?o.short:"¾×"}
+function setSpeed(id){if(!SPEED_OPTS.some(o=>o.id===id))return;speedId=id;try{localStorage.setItem("steerhead-speed",id)}catch(e){}const b=document.getElementById("bsp");if(b)b.textContent=speedShort();rUI()}
+function speedBlock(){return `<p class="sl">Pace</p><div class="spd" id="spd">${SPEED_OPTS.map(o=>`<button type="button" data-spd="${o.id}" class="${o.id===speedId?"on":""}">${o.label}</button>`).join("")}</div>`}
+function wireSpeed(){const root=document.getElementById("spd");if(!root)return;root.querySelectorAll("[data-spd]").forEach(btn=>{btn.onclick=()=>setSpeed(btn.getAttribute("data-spd"))})}
+
 const cv=document.getElementById("c"),ctx=cv.getContext("2d");
 const ui=document.getElementById("ui"),hud=document.getElementById("hud"),hb=document.getElementById("hb"),nr=document.getElementById("nr");
 const sk=document.getElementById("sk"),kb=document.getElementById("kb"),yw=document.getElementById("yw");
@@ -143,16 +157,18 @@ function rUI(){
 const playing=mode==="play"||mode==="pause";
 hud.classList.toggle("hi",!playing);sk.classList.toggle("on",coarse&&mode==="play");yw.classList.toggle("on",coarse&&mode==="play");
 document.getElementById("bp").style.visibility=playing||mode==="pause"?"visible":"hidden";
+document.getElementById("bsp").style.visibility=playing||mode==="pause"||mode==="menu"||mode==="brief"?"visible":"hidden";
+document.getElementById("bsp").textContent=speedShort();
 if(playing&&sim){const pl=sim.ph==="pilot"?"Pilot":sim.ph==="ream"?"Pre-ream pullback":"Pipe pull";const tr=sim.ph==="pilot"?Math.max(0,sim.job.L-sim.x):Math.max(0,sim.x-5);
 hb.innerHTML=`<div class="st"><label>Depth</label><value>${sim.y.toFixed(1)} ft</value></div><div class="st"><label>Sta.</label><value>${Math.max(0,sim.x).toFixed(0)} ft</value></div><div class="st"><label>Score</label><value>${Math.round(sim.sc)}</value></div><div class="st"><label>${sim.ph==="pilot"?"Bit":sim.ph==="ream"?"Reamer":"Product"}</label><value>${inch(sim.tool.od)} in</value></div><div class="st"><label>Hole</label><value>${inch(sim.hr*24)} in</value></div><div class="st"><label>To rig</label><value>${tr.toFixed(0)} ft</value></div><div class="st" style="margin-left:auto;font-family:Barlow Condensed,sans-serif;font-size:1rem;color:var(--mu)">${pl}</div>`;
 if(sim.nk&&sim.nd<6){nr.classList.remove("hi");nr.classList.toggle("hot",sim.nd<1.2);nr.textContent=U[sim.nk].s+" "+sim.nd.toFixed(1)+" ft"}else nr.classList.add("hi")}
-if(mode==="menu"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">Stealthbore · HDD trainer</p><h1>STEERHEAD</h1><p class="ld">Pilot the bore. Hook a reamer. Pull the pipe. Miss every locate.</p><div class="row"><button class="bp" id="gj">Choose a job</button><a class="bs" href="../" style="text-decoration:none;line-height:48px">Back to site</a></div><p class="mo">${coarse?"Stick = pitch · buttons = left/right":"WASD or arrows"} · bigger iron, tighter locates</p></div></div>`;document.getElementById("gj").onclick=()=>{mode="jobs";rUI()}}
+if(mode==="menu"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">Stealthbore · HDD trainer</p><h1>STEERHEAD</h1><p class="ld">Pilot the bore. Hook a reamer. Pull the pipe. Miss every locate.</p>${speedBlock()}<div class="row"><button class="bp" id="gj">Choose a job</button><a class="bs" href="../" style="text-decoration:none;line-height:48px">Back to site</a></div><p class="mo">${coarse?"Stick = pitch · buttons = left/right":"WASD or arrows"} · bigger iron, tighter locates</p></div></div>`;wireSpeed();document.getElementById("gj").onclick=()=>{mode="jobs";rUI()}}
 else if(mode==="jobs"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">Select shot</p><h2>Jobs</h2><div class="jobs" id="jl"></div><div class="row"><button class="bg" id="bm2">Back</button></div></div></div>`;const jl=document.getElementById("jl");J.forEach(j=>{const b=document.createElement("button");b.className="bb";b.innerHTML=`<span><span class="n">${j.name}</span><br><span class="m">${j.sub} · ${j.prod.name}</span></span>`;b.onclick=()=>{job=j;mode="brief";rUI()};jl.appendChild(b)});document.getElementById("bm2").onclick=()=>{mode="menu";rUI()}}
-else if(mode==="brief"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">${job.sub}</p><h2>${job.name}</h2><p class="ld">${job.brief}</p><p class="mo">1. Pilot 4.5 in · 2. Pre-ream ${job.ream.join(" / ")} in · 3. Pull ${job.prod.name}</p><div class="row"><button class="bp" id="sp">Spud in</button><button class="bs" id="bj">Jobs</button></div></div></div>`;document.getElementById("sp").onclick=()=>start(job);document.getElementById("bj").onclick=()=>{mode="jobs";rUI()}}
+else if(mode==="brief"){ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">${job.sub}</p><h2>${job.name}</h2><p class="ld">${job.brief}</p><p class="mo">1. Pilot 4.5 in · 2. Pre-ream ${job.ream.join(" / ")} in · 3. Pull ${job.prod.name}</p>${speedBlock()}<div class="row"><button class="bp" id="sp">Spud in</button><button class="bs" id="bj">Jobs</button></div></div></div>`;wireSpeed();document.getElementById("sp").onclick=()=>start(job);document.getElementById("bj").onclick=()=>{mode="jobs";rUI()}}
 else if(mode==="tool"){const hole=sim.hr*24,must=sim.rp<1;let h=`<div class="ov"><div class="pn"><p class="k">${must?"Pilot is out":"Hole opened · "+sim.rp+" pass"+(sim.rp===1?"":"es")}</p><h2>${must?"Hook a reamer":"Ream again or pull product"}</h2><p class="ld">Hole is ${inch(hole)} in. Ticket is ${sim.job.prod.name}.</p><p class="sl">Pre-ream</p><div class="jobs" id="rl"></div>`;if(must)h+=`<p class="mo" style="margin-top:1rem">Product stays on the racks until you open the hole.</p>`;else h+=`<p class="sl">Product pull</p><div class="jobs" id="pl"></div>`;h+=`</div></div>`;ui.innerHTML=h;
 const rl=document.getElementById("rl");sim.job.ream.forEach(od=>{const already=od<=hole+.05,t=rem(sim.path,sim.pipes,rF(od)),hit=!already&&t.d<0;let note="On spec";if(already)note="Already this size";else if(hit&&t.k)note=`Strikes ${U[t.k].s} · sta ${t.st.toFixed(0)}`;else if(t.d<.85&&t.k)note=`Close - ${t.d.toFixed(1)} ft to ${U[t.k].s}`;else if(od>=rec(sim.job.prod.od)+4)note="Fat - watch locates";else if(od<rec(sim.job.prod.od))note="Tight pull";const b=document.createElement("button");b.className="bb"+(hit?" dg":already?" dim":"");b.disabled=already;b.innerHTML=`<span class="n">${od} in flycutter</span><span class="m">${note}</span>`;b.onclick=()=>hook("reamer",od);rl.appendChild(b)});
 if(!must){const pl=document.getElementById("pl");sim.job.pipes.forEach(p=>{const fits=p.od+1<=hole+.05,on=Math.abs(p.od-sim.job.prod.od)<.05,note=fits?(on?"Fits · on ticket":"Fits · off ticket"):`WILL STICK - needs ~${(p.od+1.5).toFixed(0)} in hole`;const b=document.createElement("button");b.className="bb"+(fits?(on?" ok":""):" wn");b.innerHTML=`<span class="n">${p.name}</span><span class="m">${note}</span>`;b.onclick=()=>hook("pipe",p.od);pl.appendChild(b)})}}
-else if(mode==="pause"){ui.innerHTML=`<div class="ov"><div class="pn"><h2>Paused</h2><p class="ld">Steel holds. Locates don't move.</p><div class="row"><button class="bp" id="rs">Resume</button><button class="bs" id="lv">Leave job</button></div></div></div>`;document.getElementById("rs").onclick=()=>{mode="play";rUI()};document.getElementById("lv").onclick=()=>{mode="menu";sim=mk(J[0],7);view.cx=sim.x+10;view.cy=sim.y;rUI()}}
+else if(mode==="pause"){ui.innerHTML=`<div class="ov"><div class="pn"><h2>Paused</h2><p class="ld">Steel holds. Locates don't move.</p>${speedBlock()}<div class="row"><button class="bp" id="rs">Resume</button><button class="bs" id="lv">Leave job</button></div></div></div>`;wireSpeed();document.getElementById("rs").onclick=()=>{mode="play";rUI()};document.getElementById("lv").onclick=()=>{mode="menu";sim=mk(J[0],7);view.cx=sim.x+10;view.cy=sim.y;rUI()}}
 else if(mode==="result"){const r=sim;ui.innerHTML=`<div class="ov"><div class="pn"><p class="k">${r.won?"Shot complete":"Job failed"}</p><h2>${r.won?(Math.abs(r.tool.od-job.prod.od)<.05?"Product home":"Off ticket - still in"):r.fail}</h2><div class="g2"><div class="cl"><label>Score</label><value>${Math.round(r.sc)}</value></div><div class="cl"><label>Clears</label><value>${r.clears}</value></div><div class="cl"><label>Hole</label><value>${inch(r.hr*24)} in</value></div><div class="cl"><label>Product</label><value>${r.ph==="pull"||r.won?r.tool.name:job.prod.name}</value></div></div><div class="row"><button class="bp" id="rt">Run it again</button><button class="bs" id="tj">Jobs</button></div></div></div>`;document.getElementById("rt").onclick=()=>start(job);document.getElementById("tj").onclick=()=>{mode="jobs";rUI()}}
 else ui.innerHTML=""
 }
@@ -163,6 +179,8 @@ window.addEventListener("keydown",e=>{if(["KeyW","KeyA","KeyS","KeyD","ArrowUp",
 window.addEventListener("keyup",e=>keys.delete(e.code));
 window.addEventListener("blur",()=>{keys.clear();joy={x:0,y:0};yaw=0});
 document.getElementById("bp").onclick=()=>{if(mode==="play"){mode="pause";rUI()}else if(mode==="pause"){mode="play";rUI()}};
+document.getElementById("bsp").textContent=speedShort();
+document.getElementById("bsp").onclick=()=>{const i=SPEED_OPTS.findIndex(o=>o.id===speedId);setSpeed(SPEED_OPTS[(i+1)%SPEED_OPTS.length].id)};
 document.getElementById("bm").onclick=()=>{document.getElementById("bm").textContent=document.getElementById("bm").textContent==="♪"?"✕":"♪"};
 let pid=null;function sPos(e){const r=sk.getBoundingClientRect();let x=(e.clientX-(r.left+r.width/2))/(r.width*.42),y=(e.clientY-(r.top+r.height/2))/(r.height*.42);const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}return{x,y}}
 function setK(x,y){kb.style.transform=`translate(${x*36}px,${y*36}px)`}
@@ -174,7 +192,7 @@ function hold(btn,dir){btn.addEventListener("pointerdown",e=>{yaw=dir;e.preventD
 hold(document.getElementById("yL"),-1);hold(document.getElementById("yR"),1);
 matchMedia("(pointer: coarse)").addEventListener("change",e=>{coarse=e.matches;rUI()});
 function move(){let x=0,y=0;if(keys.has("KeyA")||keys.has("ArrowLeft"))x-=1;if(keys.has("KeyD")||keys.has("ArrowRight"))x+=1;if(keys.has("KeyW")||keys.has("ArrowUp"))y-=1;if(keys.has("KeyS")||keys.has("ArrowDown"))y+=1;x+=joy.x+yaw;y+=joy.y;const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}return{x,y}}
-function tick(now){const raw=Math.min(.1,(now-last)/1000);last=now;acc+=raw;while(acc>=F){acc-=F;if(view.fr>0){sV(F);continue}if(mode==="play"&&sim&&sim.alive&&!sim.pg){const mv=move();step(mv.x,mv.y,F);if(!sim.alive){mode="result";rUI()}else if(sim.pg){mode="tool";rUI()}}if(mode!=="pause"&&mode!=="tool")sV(F)}if(sim)render();if((mode==="menu"||mode==="jobs"||mode==="brief")&&sim&&(!sim.alive||sim.pg)&&view.fr<=0){sim=mk(J[1],(Date.now()+13)%100000);view.cx=sim.x+10;view.cy=sim.y}requestAnimationFrame(tick)}
+function tick(now){const raw=Math.min(.1,(now-last)/1000);last=now;acc+=raw*speedMul();while(acc>=F){acc-=F;if(view.fr>0){sV(F);continue}if(mode==="play"&&sim&&sim.alive&&!sim.pg){const mv=move();step(mv.x,mv.y,F);if(!sim.alive){mode="result";rUI()}else if(sim.pg){mode="tool";rUI()}}if(mode!=="pause"&&mode!=="tool")sV(F)}if(sim)render();if((mode==="menu"||mode==="jobs"||mode==="brief")&&sim&&(!sim.alive||sim.pg)&&view.fr<=0){sim=mk(J[1],(Date.now()+13)%100000);view.cx=sim.x+10;view.cy=sim.y}requestAnimationFrame(tick)}
 sim=mk(J[1],7);view.cx=sim.x+10;view.cy=sim.y;fit();window.addEventListener("resize",fit);rUI();last=performance.now();requestAnimationFrame(tick);
 })();
 </script>
